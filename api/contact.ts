@@ -30,7 +30,7 @@ export default async function handler(
 
         console.log('Attempting to send email with Resend...');
         const { data, error } = await resend.emails.send({
-            from: 'Your Site <onboarding@resend.dev>',
+            from: 'site@dnbcoaching.com',
             to: ['info@dnbcoaching.com'], // <<-- Make sure this is your real email
             subject: `New message from ${validatedData.name}`,
             replyTo: validatedData.email,
