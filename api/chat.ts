@@ -42,6 +42,11 @@ Style:
 
 type ChatMessage = { role: 'system'|'user'|'assistant'; content: string };
 
+const LANGUAGE_INSTRUCTIONS: Record<'nl'|'en', string> = {
+  nl: 'Spreek uitsluitend Nederlands en schrijf in de toon van een coach.',
+  en: 'Respond exclusively in English in a friendly coaching tone.',
+};
+
 async function callOpenAI(messages: ChatMessage[]) {
   if (!OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY is not set');
@@ -93,12 +98,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const maybeName = (body as Record<string, unknown>).name;
     const name = typeof maybeName === 'string' ? maybeName.trim() : '';
 
+    const maybeLang = (body as Record<string, unknown>).lang;
+    const lang: 'nl'|'en' = maybeLang === 'en' ? 'en' : 'nl';
+
     const introMessage: ChatMessage | null = name
       ? { role: 'user', content: `Mijn naam is ${name}. Spreek me persoonlijk aan.` }
       : null;
 
     const messages: ChatMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: LANGUAGE_INSTRUCTIONS[lang] },
       ...(introMessage ? [introMessage] : []),
       ...userMessages,
     ];

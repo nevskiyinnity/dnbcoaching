@@ -10,13 +10,17 @@ import { coachMedia } from "@/lib/coachMedia";
 
 interface Msg { id: string; role: "user" | "assistant"; content: string }
 
-const seedAssistant = `Yo! Ik ben je DNB Coach Bot. Zullen we starten met een korte intake? 
+const seedAssistant = `Kies je taal / Choose your language: Nederlands of English?
+
+Yo! Ik ben je DNB Coach Bot. Zullen we starten met een korte intake?
 - Wat is je doel (cut / bulk / recomp)?
 - Huidig niveau & blessures?
 - Hoeveel dagen per week wil je trainen en hoeveel tijd per sessie?
 - Materiaal (gym / home / beperkt)?`;
 
 function uid() { return Math.random().toString(36).slice(2) }
+
+type Lang = 'nl' | 'en';
 
 export default function Bot() {
   const [name, setName] = useState<string>(localStorage.getItem("bot_name") || "");
@@ -27,11 +31,13 @@ export default function Bot() {
   });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lang, setLang] = useState<Lang>((localStorage.getItem("bot_lang") as Lang) || 'nl');
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => { localStorage.setItem("bot_chat", JSON.stringify(messages)); }, [messages]);
   useEffect(() => { if (name) localStorage.setItem("bot_name", name); }, [name]);
+  useEffect(() => { if (lang) localStorage.setItem("bot_lang", lang); }, [lang]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
   async function send(msg?: string) {
@@ -45,7 +51,7 @@ export default function Bot() {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, messages: [...messages, next].map(({ role, content }) => ({ role, content })) }),
+        body: JSON.stringify({ name, lang, messages: [...messages, next].map(({ role, content }) => ({ role, content })) }),
       });
       if (!resp.ok) throw new Error("Chat failed");
       const data = await resp.json();
@@ -77,6 +83,10 @@ export default function Bot() {
               className="w-48"
             />
             <Button variant="outline" onClick={() => setName(inputName.trim())}>Opslaan</Button>
+            <div className="flex items-center gap-1">
+              <LangButton active={lang==='nl'} onClick={() => setLang('nl')}>NL</LangButton>
+              <LangButton active={lang==='en'} onClick={() => setLang('en')}>EN</LangButton>
+            </div>
           </div>
         </header>
 
@@ -171,6 +181,14 @@ function MessageBubble({ role, children }: { role: "user"|"assistant"; children:
 function QuickAction({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <Button onClick={onClick} variant="outline" size="sm" className="rounded-full">
+      {children}
+    </Button>
+  );
+}
+
+function LangButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Button onClick={onClick} variant={active ? 'hero' : 'outline'} size="sm" className="rounded-full px-3">
       {children}
     </Button>
   );
