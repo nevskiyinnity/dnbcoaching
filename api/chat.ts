@@ -93,9 +93,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const maybeName = (body as Record<string, unknown>).name;
     const name = typeof maybeName === 'string' ? maybeName.trim() : '';
 
+    const introMessage: ChatMessage | null = name
+      ? { role: 'user', content: `Mijn naam is ${name}. Spreek me persoonlijk aan.` }
+      : null;
+
     const messages: ChatMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...(name ? [{ role: 'user', content: `Mijn naam is ${name}. Spreek me persoonlijk aan.` }] : []),
+      ...(introMessage ? [introMessage] : []),
       ...userMessages,
     ];
 
