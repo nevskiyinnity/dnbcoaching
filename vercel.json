@@ -1,12 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci",
-  "buildCommand": "npm ci && npm run build",
-  "functions": {
-    "api/*.ts": {
-      "runtime": "nodejs20.x"
-    }
-  },
+  "buildCommand": "npm run build",
   "rewrites": [
     { "source": "/bot", "destination": "/index.html" },
     { "source": "/bot/", "destination": "/index.html" },
