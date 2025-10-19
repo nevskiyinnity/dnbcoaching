@@ -4,6 +4,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Minimal Chat Completions client via fetch to avoid extra deps
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 const SYSTEM_PROMPT = `You are DNB Coaching's AI coach. Speak like a friendly Dutch coach (informal, motivational, concise), addressing the user by name if provided (e.g., "Yo Kevin").
 
@@ -59,7 +60,7 @@ async function callOpenAI(messages: ChatMessage[]) {
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: OPENAI_MODEL,
       temperature: 0.7,
       messages,
     }),
@@ -77,6 +78,10 @@ async function callOpenAI(messages: ChatMessage[]) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
+
+  if (!OPENAI_API_KEY) {
+    return res.status(500).json({ message: 'Missing OPENAI_API_KEY' });
+  }
 
   try {
     const body: unknown = req.body ?? {};
@@ -116,7 +121,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ message: content });
   } catch (e: unknown) {
+    const errMsg = e instanceof Error ? e.message : 'unknown error';
     console.error('chat api error', e);
-    return res.status(500).json({ message: 'Chat error' });
+    return res.status(500).json({ message: `Chat error: ${errMsg}` });
   }
 }

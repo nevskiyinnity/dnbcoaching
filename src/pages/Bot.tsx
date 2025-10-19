@@ -53,13 +53,14 @@ export default function Bot() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, lang, messages: [...messages, next].map(({ role, content }) => ({ role, content })) }),
       });
-      if (!resp.ok) throw new Error("Chat failed");
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.message || "Chat failed");
       const content: string = data.message ?? "";
       setMessages(m => [...m, { id: uid(), role: "assistant", content }]);
     } catch (e: unknown) {
       console.error(e);
-      toast("Er ging iets mis. Probeer later opnieuw.");
+      const msg = e instanceof Error ? e.message : 'Er ging iets mis. Probeer later opnieuw.';
+      toast(msg);
     } finally {
       setLoading(false);
     }
