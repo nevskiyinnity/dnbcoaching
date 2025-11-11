@@ -3,9 +3,9 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "rewrites": [
-    { "source": "/bot", "destination": "/index.html" },
-    { "source": "/bot/", "destination": "/index.html" },
-    { "source": "/bot/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/bot/(.*)", "destination": "/index.html" }
+    { "source": "/bot", "destination": "/bot/index.html" },
+    { "source": "/bot/", "destination": "/bot/index.html" },
+    { "source": "/bot/assets/(.*)", "destination": "/bot/assets/$1" },
+    { "source": "/bot/(.*)", "destination": "/bot/index.html" }
   ]
 }

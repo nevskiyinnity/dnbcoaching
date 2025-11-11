@@ -5,7 +5,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
-import { Play, Send, Sparkles, Video } from "lucide-react";
+import { Play, Send, Sparkles, Video, LogIn, Pin, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { coachMedia } from "@/lib/coachMedia";
 
 interface Msg { id: string; role: "user" | "assistant"; content: string }
@@ -23,6 +25,11 @@ function uid() { return Math.random().toString(36).slice(2) }
 type Lang = 'nl' | 'en';
 
 export default function Bot() {
+  const [userCode, setUserCode] = useState<string>(localStorage.getItem("bot_user_code") || "");
+  const [userName, setUserName] = useState<string>(localStorage.getItem("bot_user_name") || "");
+  const [authenticated, setAuthenticated] = useState<boolean>(!!localStorage.getItem("bot_user_code"));
+  const [loginCode, setLoginCode] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [name, setName] = useState<string>(localStorage.getItem("bot_name") || "");
   const [inputName, setInputName] = useState(name);
   const [messages, setMessages] = useState<Msg[]>(() => {
@@ -32,13 +39,51 @@ export default function Bot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<Lang>((localStorage.getItem("bot_lang") as Lang) || 'nl');
+  const [pinnedMessages, setPinnedMessages] = useState<Msg[]>(() => {
+    const saved = localStorage.getItem("bot_pinned");
+    return saved ? JSON.parse(saved) : [];
+  });
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => { localStorage.setItem("bot_chat", JSON.stringify(messages)); }, [messages]);
   useEffect(() => { if (name) localStorage.setItem("bot_name", name); }, [name]);
   useEffect(() => { if (lang) localStorage.setItem("bot_lang", lang); }, [lang]);
+  useEffect(() => { localStorage.setItem("bot_pinned", JSON.stringify(pinnedMessages)); }, [pinnedMessages]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+
+  async function handleLogin() {
+    if (!loginCode.trim()) {
+      toast.error("Please enter a code");
+      return;
+    }
+    
+    setLoginLoading(true);
+    try {
+      const resp = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: loginCode.trim(), validateOnly: true }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      
+      if (!resp.ok || !data.valid) {
+        throw new Error(data.message || "Invalid or expired code");
+      }
+      
+      localStorage.setItem("bot_user_code", loginCode.trim());
+      localStorage.setItem("bot_user_name", data.userName || "");
+      setUserCode(loginCode.trim());
+      setUserName(data.userName || "");
+      setAuthenticated(true);
+      toast.success(`Welcome, ${data.userName}!`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Invalid code';
+      toast.error(msg);
+    } finally {
+      setLoginLoading(false);
+    }
+  }
 
   async function send(msg?: string) {
     const text = (msg ?? input).trim();
@@ -51,7 +96,7 @@ export default function Bot() {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, lang, messages: [...messages, next].map(({ role, content }) => ({ role, content })) }),
+        body: JSON.stringify({ code: userCode, name: userName || name, lang, messages: [...messages, next].map(({ role, content }) => ({ role, content })) }),
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(data?.message || "Chat failed");
@@ -67,6 +112,55 @@ export default function Bot() {
   }
 
   const assistantBlocks = useMemo(() => messages.map(m => ({ ...m, blocks: parseBlocks(m.content) })), [messages]);
+  const pinnedBlocks = useMemo(() => pinnedMessages.map(m => ({ ...m, blocks: parseBlocks(m.content) })), [pinnedMessages]);
+
+  function togglePin(msg: Msg) {
+    setPinnedMessages(prev => {
+      const exists = prev.find(p => p.id === msg.id);
+      if (exists) {
+        return prev.filter(p => p.id !== msg.id);
+      } else {
+        return [...prev, msg];
+      }
+    });
+  }
+
+  function isPinned(msgId: string) {
+    return pinnedMessages.some(p => p.id === msgId);
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LogIn size={24} /> Bot Login
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Enter your access code to use the DNB Coach Bot.
+            </p>
+            <div>
+              <Label htmlFor="code">Access Code</Label>
+              <Input
+                id="code"
+                value={loginCode}
+                onChange={(e) => setLoginCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                placeholder="Enter your code"
+                className="uppercase font-mono"
+              />
+            </div>
+            <Button onClick={handleLogin} disabled={loginLoading} className="w-full">
+              Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,11 +186,42 @@ export default function Bot() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 space-y-4">
+            {pinnedMessages.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                  <Pin size={14} /> Pinned Messages
+                </h3>
+                <div className="space-y-2">
+                  {pinnedBlocks.map(m => (
+                    <div key={m.id} className="rounded-xl border border-primary/30 bg-card p-4 relative">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-2 right-2 h-6 w-6 p-0"
+                        onClick={() => togglePin(m)}
+                      >
+                        <X size={14} />
+                      </Button>
+                      <div className="pr-8">
+                        {m.blocks.map((b, i) =>
+                          b.type === "video" ? (
+                            <VideoBlock key={i} id={b.id} />
+                          ) : (
+                            <p key={i} className="whitespace-pre-wrap leading-relaxed text-sm">{b.text}</p>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-xl border border-border bg-card/50 backdrop-blur-sm p-4 h-[70vh] flex flex-col">
               <div className="flex-1 overflow-y-auto pr-2 space-y-4">
                 {assistantBlocks.map(m => (
-                  <MessageBubble key={m.id} role={m.role}>
+                  <MessageBubble key={m.id} role={m.role} onPin={() => togglePin(m)} isPinned={isPinned(m.id)}>
                     {m.blocks.map((b, i) =>
                       b.type === "video" ? (
                         <VideoBlock key={i} id={b.id} />
@@ -165,15 +290,29 @@ export default function Bot() {
   );
 }
 
-function MessageBubble({ role, children }: { role: "user"|"assistant"; children: React.ReactNode }) {
+function MessageBubble({ role, children, onPin, isPinned }: { role: "user"|"assistant"; children: React.ReactNode; onPin?: () => void; isPinned?: boolean }) {
   const isUser = role === "user";
   return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}> 
+    <div className={cn("flex group", isUser ? "justify-end" : "justify-start")}> 
       <div className={cn(
-        "max-w-[85%] rounded-lg px-4 py-3 text-sm shadow-sm",
+        "max-w-[85%] rounded-lg px-4 py-3 text-sm shadow-sm relative",
         isUser ? "bg-primary text-primary-foreground" : "bg-muted/30 border border-border"
       )}>
         {children}
+        {!isUser && onPin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "absolute -top-2 -right-2 h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity",
+              isPinned && "opacity-100"
+            )}
+            onClick={onPin}
+            title={isPinned ? "Unpin" : "Pin this message"}
+          >
+            <Pin size={14} className={cn(isPinned && "fill-current")} />
+          </Button>
+        )}
       </div>
     </div>
   );
