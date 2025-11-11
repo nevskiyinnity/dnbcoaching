@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAllUsers, addUser, updateUser, deleteUser, generateCode, type User } from '../lib/users';
+import { getAllUsers, addUser, updateUser, deleteUser, generateCode, type User } from '../lib/users.js';
 
 const ADMIN_PASSWORD = 'DNBCoach';
 

@@ -1,7 +1,7 @@
 // Location: /api/chat.ts
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { isCodeValid } from './lib/users';
+import { isCodeValid } from './lib/users.js';
 
 // Minimal Chat Completions client via fetch to avoid extra deps
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
