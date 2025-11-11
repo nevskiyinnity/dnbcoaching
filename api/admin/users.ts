@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // GET - list all users
     if (req.method === 'GET') {
-      const users = getAllUsers();
+      const users = await getAllUsers();
       return res.status(200).json({ users });
     }
 
@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         createdAt: new Date().toISOString(),
       };
 
-      addUser(newUser);
+      await addUser(newUser);
       return res.status(201).json({ user: newUser });
     }
 
@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (name !== undefined) updates.name = name.trim();
       if (expiryDate !== undefined) updates.expiryDate = expiryDate;
 
-      const success = updateUser(id, updates);
+      const success = await updateUser(id, updates);
       if (!success) {
         return res.status(404).json({ message: 'User not found' });
       }
@@ -73,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ message: 'User ID is required' });
       }
 
-      const success = deleteUser(id);
+      const success = await deleteUser(id);
       if (!success) {
         return res.status(404).json({ message: 'User not found' });
       }

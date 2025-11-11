@@ -114,7 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (validateOnly) {
       // Just validate the code and return
-      const validation = isCodeValid(code);
+      const validation = await isCodeValid(code);
       if (!validation.valid) {
         return res.status(401).json({ valid: false, message: validation.reason || 'Invalid code' });
       }
@@ -126,7 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ message: 'Access code required' });
     }
     
-    const validation = isCodeValid(code);
+    const validation = await isCodeValid(code);
     if (!validation.valid) {
       return res.status(401).json({ message: validation.reason || 'Invalid or expired code' });
     }
